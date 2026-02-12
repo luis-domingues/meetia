@@ -1,0 +1,35 @@
+{
+    "manifest_version": 3,
+    "name": "Meet.ia Assistant",
+    "description": "AI that documents Google Meet meetings for you automatically.",
+    "version": "0.1.0",
+    "permissions": [
+        "storage",
+        "activeTab"
+    ],
+    "host_permissions": [
+        "https://meet.google.com/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://meet.google.com/*"],
+            "js": ["meet-observer.js"]
+        }
+    ],
+    "action": {
+        "default_popup": "src/popup/index.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    }
+}
