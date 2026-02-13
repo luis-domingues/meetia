@@ -1,3 +1,5 @@
+import { recordingIndicator } from "./recording-indicator";
+
 interface CaptionData {
     speaker: string;
     text: string;
@@ -12,6 +14,7 @@ class MeetTranscriptCapture {
     start() {
         this.isRecording = true;
         console.log("started recording captions");
+        recordingIndicator.show();
         this.observer = new MutationObserver(()=> {this.captureVisibleCaptions()});
         this.observer.observe(document.body, {
             childList: true,
@@ -40,7 +43,7 @@ class MeetTranscriptCapture {
             chrome.runtime.sendMessage({
                 type: 'NEW_CAPTION',
                 data: {text, timestamp: Date.now()}
-            });
+            }).catch(error=> {console.debug('Background not listening for NEW_CAPTION', error)});
         });
     }
 
@@ -53,6 +56,7 @@ class MeetTranscriptCapture {
     stop() {
         this.isRecording = false;
         this.observer?.disconnect();
+        recordingIndicator.hide();
         return this.captions;
     }
 
