@@ -13,6 +13,18 @@ export const storageService = {
         return chrome.storage.local.set({ openai_key: key });
     },
 
+    setRecordingState: (isRecording: boolean): Promise<void> => {
+        return chrome.storage.local.set({is_recording: isRecording});
+    },
+
+    getRecordingState: (): Promise<boolean> => {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['is_recording'], (result: {is_recording?: boolean}) => {
+                resolve(result.is_recording || false);
+            });
+        });
+    },
+
     saveMeeting: (transcript: string, summary: MeetingSummary): Promise<void> => {
         const key = `meeting_${Date.now()}`;
         const data: StoredMeeting = {

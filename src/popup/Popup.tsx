@@ -14,6 +14,7 @@ export default function Popup() {
 
     useEffect(() => {
         storageService.getApiKey().then(setSavedApiKey);
+        storageService.getRecordingState().then(setIsRecording);
     }, []);
 
     const handleSaveKey = async (key: string)=> {
@@ -26,9 +27,13 @@ export default function Popup() {
     const handleStart = async ()=> {
         const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
         if(tab.id) {
-            chrome.tabs.sendMessage(tab.id, {type: 'START_RECORDING'}, (res) => {
-                if(res?.success) setIsRecording(true);
-            });
+            try {
+                const response =  await chrome.tabs.sendMessage(tab.id, {type: 'START_RECORDING'});
+                if(response?.success) {
+                    setIsRecording(true);
+                    await storageService.setRecordingState(true);
+                }
+            } catch(error) { console.error('error to initialize recording:', error) }
         }
     };
 
@@ -39,6 +44,7 @@ export default function Popup() {
         if(tab.id) {
             chrome.tabs.sendMessage(tab.id, { type: 'STOP_RECORDING' }, async (response) => {
                 setIsRecording(false);
+                await storageService.setRecordingState(false);
                 try {
                     const openai = new OpenAIService();
                     await openai.initialize(savedApiKey);
