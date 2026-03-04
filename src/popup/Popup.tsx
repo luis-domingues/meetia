@@ -11,6 +11,7 @@ export default function Popup() {
     const [isRecording, setIsRecording] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [summary, setSummary] = useState<MeetingSummary | null>(null);
+    const [transcript, setTranscript] = useState('');
 
     useEffect(() => {
         storageService.getApiKey().then(setSavedApiKey);
@@ -51,6 +52,7 @@ export default function Popup() {
                     const generatedSummary = await openai.generateMeetingSummary(response.transcript);
                     
                     setSummary(generatedSummary);
+                    setTranscript(response.transcript);
                     await storageService.saveMeeting(response.transcript, generatedSummary);
                 } catch (error) {
                     console.error(error);
@@ -80,7 +82,7 @@ export default function Popup() {
                 onStop={handleStop}           
             />
 
-            {summary && <SummaryDisplay summary={summary} />}
+            {summary && <SummaryDisplay summary={summary} transcript={transcript} />}
         </div>
     );
 }
