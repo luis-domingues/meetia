@@ -8,9 +8,11 @@ interface Props {
 }
 
 export const SummaryDisplay: React.FC<Props> = ({ summary, transcript }) => {
+    const [includeTranscript, setIncludeTranscript] = React.useState(false);
+
     const handleGeneratePDF = ()=> {
         try {
-            const pdfBlob = PDFService.generateMeetingSummaryPDF(summary, transcript);
+            const pdfBlob = PDFService.generateMeetingSummaryPDF(summary, includeTranscript ? transcript : '');
             PDFService.openPDFInNewTab(pdfBlob);
         }
         catch(error) {
@@ -25,6 +27,17 @@ export const SummaryDisplay: React.FC<Props> = ({ summary, transcript }) => {
                 <p className="mb-4 text-gray-600 whitespace-pre-wrap">{summary.resumo}</p>
             </div>
 
+            {summary.participantes && summary.participantes.length > 0 && (
+                <div className="mb-4">
+                    <h4 className="font-semibold mb-2">Participantes</h4>
+                    <ul className="list-disc list-inside space-y-1">
+                        {summary.participantes.map((participante, index) => (
+                            <li key={index} className="text-gray-700">{participante}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
             {summary.decisoes && summary.decisoes.length > 0 && (
                 <div className="mb-4">
                     <h3 className="font-semibold mb-2">Pontos Principais</h3>
@@ -38,14 +51,44 @@ export const SummaryDisplay: React.FC<Props> = ({ summary, transcript }) => {
 
             {summary.actionItems && summary.actionItems.length > 0 && (
                 <div className="mb-4">
-                    <h3 className="font-semibold mb-2">Action Items</h3>
-                    <ul className="list-disc list-inside space-y-1">
+                    <h4 className="font-semibold mb-2">Itens de Ação</h4>
+                    <ul className="list-disc list-inside space-y-2">
                         {summary.actionItems.map((item, index) => (
-                            <li key={index} className="text-sm text-gray-700">{item.responsavel}</li>
+                            <li key={index} className="text-gray-700">
+                                <span className="font-medium">{item.responsavel}:</span> {item.tarefa}
+                                {item.prazo && (
+                                    <span className="text-gray-500 text-xs ml-2">
+                                        (Prazo: {item.prazo})
+                                    </span>
+                                )}
+                            </li>
                         ))}
                     </ul>
                 </div>
             )}
+
+            {summary.proximosPassos && summary.proximosPassos.length > 0 && (
+                <div className="mb-4">
+                    <h4 className="font-semibold mb-2">Próximos Passos</h4>
+                    <ul className="list-disc list-inside space-y-1">
+                        {summary.proximosPassos.map((passo, index) => (
+                            <li key={index} className="text-gray-700">{passo}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            <div className='mb-3'>
+                <label className='flex items-center gap-2 text-sm text-gray-600 cursor-pointer'>
+                    <input 
+                        type="checkbox" 
+                        checked={includeTranscript}
+                        onChange={(e)=> setIncludeTranscript(e.target.checked)}
+                        className='w-4 h-4 border-gray-300'
+                    />
+                        Incluir transcrição completa no PDF
+                </label>
+            </div>
 
             <button
                 onClick={handleGeneratePDF}
