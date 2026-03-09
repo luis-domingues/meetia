@@ -43,13 +43,28 @@ export class PDFService {
         yPosition += 5;
         if(summary.decisoes && summary.decisoes.length > 0) {
             addText('PONTOS PRINCIPAIS', 16, true);
-            summary.decisoes.forEach((point, index) => {addText(`${index + 1}. ${point}`, 12, false)});
+            summary.decisoes.forEach((point, index) => {
+                const pointText = typeof point === 'string' ? point : JSON.stringify(point);
+                addText(`${index + 1}. ${pointText}`, 12, false)
+            });
             yPosition += 5;
         }
 
         if(summary.actionItems && summary.actionItems.length > 0) {
             addText('ITENS DE AÇÃO', 16, true);
-            summary.actionItems.forEach((item, index) => {addText(`${index + 1}. ${item}`, 12, false)});
+            summary.actionItems.forEach((item, index) => {
+                let itemText = '';
+                if(typeof item === 'string') itemText = item;
+                else if(typeof item === 'object' && item != null) {
+                    itemText = 
+                        (item as any).text ||
+                        (item as any).description ||
+                        (item as any).action ||
+                        (item as any).name ||
+                        JSON.stringify(item);
+                }
+                addText(`${index + 1}. ${itemText}`, 12, false)
+            });
             yPosition += 5;
         }
 
