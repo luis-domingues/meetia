@@ -26,11 +26,13 @@ class MeetTranscriptCapture {
 
     private captureVisibleCaptions() {
         if(!this.isRecording) return;
-        const captionElements = document.querySelectorAll('[jsname="YSxPC"], .a4cQT, [class*="caption"]');
+        const captionElements = document.querySelectorAll('[jsname="YSxPC"]:not([aria-hidden="true"])');
 
         captionElements.forEach((element)=> {
             const text = element.textContent?.trim();
+
             if(!text) return;
+            if(text.includes('BETA') || text.length > 500 || text.includes('language')) return;
 
             const lastCaption = this.captions[this.captions.length - 1];
             if(lastCaption?.text === text) return;
