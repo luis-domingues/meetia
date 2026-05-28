@@ -1,26 +1,32 @@
-import { recordingIndicator } from "./recording-indicator";
+import { type CaptionData } from '../types';
+import { MessageType } from '../constants/messages';
+import { recordingIndicator } from './recording-indicator';
 
-interface CaptionData {
-    speaker: string;
-    text: string;
-    timestamp: number;
-}
+interface StartRecordingMessage { type: typeof MessageType.START_RECORDING }
+interface StopRecordingMessage { type: typeof MessageType.STOP_RECORDING }
+type IncomingMessage = StartRecordingMessage | StopRecordingMessage;
 
 class MeetTranscriptCapture {
     private captions: CaptionData[] = [];
     private observer: MutationObserver | null = null;
     private isRecording = false;
+    private captureScheduled = false;
 
     start() {
         this.isRecording = true;
-        console.log("started recording captions");
+        this.captions = [];
         recordingIndicator.show();
-        this.observer = new MutationObserver(()=> {this.captureVisibleCaptions()});
-        this.observer.observe(document.body, {
-            childList: true,
-            subtree: true
+
+        this.observer = new MutationObserver(() => {
+            if(this.captureScheduled) return;
+            this.captureScheduled = true;
+            requestAnimationFrame(() => {
+                this.captureVisibleCaptions();
+                this.captureScheduled = false;
+            });
         });
 
+        this.observer.observe(document.body, { childList: true, subtree: true });
         this.captureVisibleCaptions();
     }
 
@@ -28,54 +34,62 @@ class MeetTranscriptCapture {
         if(!this.isRecording) return;
         const captionElements = document.querySelectorAll('[jsname="YSxPC"]:not([aria-hidden="true"])');
 
-        captionElements.forEach((element)=> {
+        captionElements.forEach((element) => {
             const text = element.textContent?.trim();
+            if (!text || text.length > 500) return;
+            if (text.includes('BETA') || text.includes('language')) return;
 
-            if(!text) return;
-            if(text.includes('BETA') || text.length > 500 || text.includes('language')) return;
-
+            const speaker = this.extractSpeaker(element);
             const lastCaption = this.captions[this.captions.length - 1];
-            if(lastCaption?.text === text) return;
-            this.captions.push({
-                speaker: this.extractSpeaker(element),
-                text,
-                timestamp: Date.now(),
-            });
 
-            chrome.runtime.sendMessage({
-                type: 'NEW_CAPTION',
-                data: {text, timestamp: Date.now()}
-            }).catch(error=> {console.debug('Background not listening for NEW_CAPTION', error)});
+            //if same speaker is still talking, update in-place instead of duplicating partial captions
+            if(lastCaption?.speaker === speaker && text.startsWith(lastCaption.text)) {
+                this.captions[this.captions.length - 1] = { ...lastCaption, text };
+                return;
+            }
+
+            if(lastCaption?.text === text && lastCaption?.speaker === speaker) return;
+
+            const now = Date.now();
+            this.captions.push({speaker, text, timestamp: now});
+
+            chrome.runtime.sendMessage({type: MessageType.NEW_CAPTION, data: {text, timestamp: now}}).catch(() => {});
         });
     }
 
     private extractSpeaker(element: Element): string {
-        //identify speaker from element
         const speakerElement = element.parentElement?.querySelector('[class*="name"]');
-        return speakerElement?.textContent?.trim() || 'Unknown';
+        return speakerElement?.textContent?.trim() ?? 'Unknown';
     }
 
     stop() {
         this.isRecording = false;
         this.observer?.disconnect();
+        this.observer = null;
         recordingIndicator.hide();
-        return this.captions;
     }
 
     getTranscript(): string {
-        return this.captions.map(c => `[${new Date(c.timestamp).toLocaleDateString()}] ${c.speaker}: ${c.text}`).join('\n');
+        return this.captions
+            .map(c => `[${new Date(c.timestamp).toLocaleTimeString()}] ${c.speaker}: ${c.text}`)
+            .join('\n');
     }
 }
 
 if(window.location.hostname === 'meet.google.com') {
     const capture = new MeetTranscriptCapture();
-    chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void)=> {
-        if(message.type === 'START_RECORDING') {
+
+    chrome.runtime.onMessage.addListener((
+        message: IncomingMessage,
+        _sender: chrome.runtime.MessageSender,
+        sendResponse: (response: unknown) => void,
+    ) => {
+        if(message.type === MessageType.START_RECORDING) {
             capture.start();
-            sendResponse({success: true});
-        } else if(message.type === 'STOP_RECORDING') {
+            sendResponse({ success: true });
+        } else if(message.type === MessageType.STOP_RECORDING) {
             capture.stop();
-            sendResponse({transcript: capture.getTranscript()});
+            sendResponse({ transcript: capture.getTranscript() });
         }
         return true;
     });
