@@ -11,12 +11,14 @@
         "https://meet.google.com/*"
     ],
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
     },
     "content_scripts": [
         {
             "matches": ["https://meet.google.com/*"],
-            "js": ["meet-observer.js"]
+            "js": ["meet-observer.js"],
+            "type": "module"
         }
     ],
     "action": {
